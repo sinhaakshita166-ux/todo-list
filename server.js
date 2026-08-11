@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
@@ -8,6 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve HTML, CSS and JavaScript
 app.use(express.static(__dirname));
 
 
@@ -17,20 +19,13 @@ app.use(express.static(__dirname));
 
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-});
-
-db.connect((err) => {
-
-    if (err) {
-        console.log("Database connection failed:", err);
-        return;
+    database: process.env.DB_NAME,
+    ssl: {
+    rejectUnauthorized: false
     }
-
-    console.log("Connected to MySQL!");
-
 });
 
 
@@ -45,22 +40,22 @@ app.get("/tasks", (req, res) => {
     db.query(sql, (err, results) => {
 
         if (err) {
-            console.log(err);
+            console.log("GET ERROR:", err);
+
             res.status(500).json({
                 error: "Database error"
             });
+
             return;
         }
 
         res.json(results);
-
     });
-
 });
 
 
 // ===============================
-// ADD A NEW TASK
+// ADD TASK
 // ===============================
 
 app.post("/tasks", (req, res) => {
@@ -71,6 +66,7 @@ app.post("/tasks", (req, res) => {
         res.status(400).json({
             error: "Task is required"
         });
+
         return;
     }
 
@@ -79,10 +75,12 @@ app.post("/tasks", (req, res) => {
     db.query(sql, [task], (err, result) => {
 
         if (err) {
-            console.log(err);
+            console.log("POST ERROR:", err);
+
             res.status(500).json({
                 error: "Database error"
             });
+
             return;
         }
 
@@ -91,29 +89,26 @@ app.post("/tasks", (req, res) => {
             task: task,
             completed: 0
         });
-
     });
-
 });
 
 
 // ===============================
-// DELETE A TASK
+// DELETE TASK
 // ===============================
 
 app.delete("/tasks/:id", (req, res) => {
 
     const id = req.params.id;
 
-    console.log("Deleting task with ID:", id);
+    console.log("Deleting task:", id);
 
     const sql = "DELETE FROM tasks WHERE id = ?";
 
     db.query(sql, [id], (err, result) => {
 
         if (err) {
-
-            console.log("Delete error:", err);
+            console.log("DELETE ERROR:", err);
 
             res.status(500).json({
                 error: "Database error"
@@ -122,18 +117,16 @@ app.delete("/tasks/:id", (req, res) => {
             return;
         }
 
-        console.log("Task deleted!");
-
         res.json({
             message: "Task deleted successfully"
         });
-
     });
-
 });
 
 
+// ===============================
 // UPDATE TASK
+// ===============================
 
 app.put("/tasks/:id", (req, res) => {
 
@@ -148,7 +141,6 @@ app.put("/tasks/:id", (req, res) => {
     db.query(sql, [completed, id], (err, result) => {
 
         if (err) {
-
             console.log("UPDATE ERROR:", err);
 
             res.status(500).json({
@@ -158,55 +150,49 @@ app.put("/tasks/:id", (req, res) => {
             return;
         }
 
-        console.log("Task updated successfully!");
-
         res.json({
             message: "Task updated successfully"
         });
-
     });
-
 });
 
+
 // ===============================
-// START SERVER
+// HOME PAGE
 // ===============================
 
+app.get("/", (req, res) => {
+    res.sendFile(__dirname + "/index.html");
+});
 
 
-app.put("/tasks/:id", (req, res) => {
+// ===============================
+// VERCEL
+// ===============================
 
-    const id = req.params.id;
-    const completed = req.body.completed;
+// Export the Express application
+module.exports = app;
 
-    console.log("Updating task:", id, "Completed:", completed);
 
-    const sql = "UPDATE tasks SET completed = ? WHERE id = ?";
+// ===============================
+// LOCAL DEVELOPMENT
+// ===============================
 
-    db.query(sql, [completed, id], (err, result) => {
+if (require.main === module) {
+
+    db.connect((err) => {
 
         if (err) {
-
-            console.log("Update error:", err);
-
-            res.status(500).json({
-                error: "Database error"
-            });
-
+            console.log("Database connection failed:", err);
             return;
         }
 
-        console.log("Task updated!");
+        console.log("Connected to MySQL!");
 
-        res.json({
-            message: "Task updated successfully"
+        app.listen(3000, () => {
+            console.log("Server running on http://localhost:3000");
         });
 
     });
 
-});
-app.listen(3000, () => {
-
-    console.log("Server running on port 3000");
-
-});
+}
