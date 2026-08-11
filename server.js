@@ -3,14 +3,26 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-
+const path = require("path");
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 // Serve HTML, CSS and JavaScript
-app.use(express.static(__dirname));
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/script.js", (req, res) => {
+    res.sendFile(path.join(__dirname, "script.js"));
+});
+
+app.get("/style.css", (req, res) => {
+    res.sendFile(path.join(__dirname, "style.css"));
+});
+
 
 
 // ===============================
@@ -162,7 +174,7 @@ app.put("/tasks/:id", (req, res) => {
 // ===============================
 
 app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/index.html");
+    res.sendFile(path.join(__dirname, "index.html"));
 });
 
 
