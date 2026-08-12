@@ -3,31 +3,18 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-const path = require("path");
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 // Serve HTML, CSS and JavaScript
+app.use(express.static(__dirname));
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.get("/script.js", (req, res) => {
-    res.sendFile(path.join(__dirname, "script.js"));
-});
-
-app.get("/style.css", (req, res) => {
-    res.sendFile(path.join(__dirname, "style.css"));
-});
-
-
-
-// ===============================
-// CONNECT TO MYSQL
-// ===============================
+// ==========================================
+// CONNECT TO MYSQL USING CONNECTION POOL
+// ==========================================
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -35,18 +22,19 @@ const db = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+
     ssl: {
         rejectUnauthorized: false
     },
+
     waitForConnections: true,
     connectionLimit: 5,
     queueLimit: 0
 });
 
-
-// ===============================
+// ==========================================
 // GET ALL TASKS
-// ===============================
+// ==========================================
 
 app.get("/tasks", (req, res) => {
 
@@ -57,32 +45,27 @@ app.get("/tasks", (req, res) => {
         if (err) {
             console.log("GET ERROR:", err);
 
-            res.status(500).json({
+            return res.status(500).json({
                 error: "Database error"
             });
-
-            return;
         }
 
         res.json(results);
     });
 });
 
-
-// ===============================
+// ==========================================
 // ADD TASK
-// ===============================
+// ==========================================
 
 app.post("/tasks", (req, res) => {
 
     const task = req.body.task;
 
     if (!task) {
-        res.status(400).json({
+        return res.status(400).json({
             error: "Task is required"
         });
-
-        return;
     }
 
     const sql = "INSERT INTO tasks (task) VALUES (?)";
@@ -92,11 +75,9 @@ app.post("/tasks", (req, res) => {
         if (err) {
             console.log("POST ERROR:", err);
 
-            res.status(500).json({
+            return res.status(500).json({
                 error: "Database error"
             });
-
-            return;
         }
 
         res.json({
@@ -107,10 +88,9 @@ app.post("/tasks", (req, res) => {
     });
 });
 
-
-// ===============================
+// ==========================================
 // DELETE TASK
-// ===============================
+// ==========================================
 
 app.delete("/tasks/:id", (req, res) => {
 
@@ -125,11 +105,9 @@ app.delete("/tasks/:id", (req, res) => {
         if (err) {
             console.log("DELETE ERROR:", err);
 
-            res.status(500).json({
+            return res.status(500).json({
                 error: "Database error"
             });
-
-            return;
         }
 
         res.json({
@@ -138,10 +116,9 @@ app.delete("/tasks/:id", (req, res) => {
     });
 });
 
-
-// ===============================
+// ==========================================
 // UPDATE TASK
-// ===============================
+// ==========================================
 
 app.put("/tasks/:id", (req, res) => {
 
@@ -158,11 +135,9 @@ app.put("/tasks/:id", (req, res) => {
         if (err) {
             console.log("UPDATE ERROR:", err);
 
-            res.status(500).json({
+            return res.status(500).json({
                 error: "Database error"
             });
-
-            return;
         }
 
         res.json({
@@ -171,21 +146,20 @@ app.put("/tasks/:id", (req, res) => {
     });
 });
 
-
-// ===============================
+// ==========================================
 // HOME PAGE
-// ===============================
+// ==========================================
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+
+    res.sendFile(__dirname + "/index.html");
+
 });
 
+// ==========================================
+// TEMPORARY DATABASE SETUP
+// ==========================================
 
-// ===============================
-// VERCEL
-// ===============================
-
-// Export the Express application
 app.get("/setup-database", (req, res) => {
 
     const sql = `
@@ -199,6 +173,7 @@ app.get("/setup-database", (req, res) => {
     db.query(sql, (err) => {
 
         if (err) {
+
             console.log("SETUP ERROR:", err);
 
             return res.status(500).json({
@@ -213,9 +188,25 @@ app.get("/setup-database", (req, res) => {
     });
 
 });
+
+// ==========================================
+// VERCEL
+// ==========================================
+
 module.exports = app;
 
-// ===============================
+// ==========================================
 // LOCAL DEVELOPMENT
-// ===============================
+// ==========================================
 
+if (require.main === module) {
+
+    app.listen(3000, () => {
+
+        console.log(
+            "Server running on http://localhost:3000"
+        );
+
+    });
+
+}
