@@ -183,6 +183,33 @@ app.get("/", (req, res) => {
 // ===============================
 
 // Export the Express application
+app.get("/setup-database", (req, res) => {
+
+    const sql = `
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            task VARCHAR(255) NOT NULL,
+            completed TINYINT(1) DEFAULT 0
+        )
+    `;
+
+    db.query(sql, (err) => {
+
+        if (err) {
+            console.log("SETUP ERROR:", err);
+
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+
+        res.json({
+            message: "Tasks table is ready!"
+        });
+
+    });
+
+});
 module.exports = app;
 
 
