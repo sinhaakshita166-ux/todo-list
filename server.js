@@ -29,15 +29,18 @@ app.get("/style.css", (req, res) => {
 // CONNECT TO MYSQL
 // ===============================
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     ssl: {
-    rejectUnauthorized: false
-    }
+        rejectUnauthorized: false
+    },
+    waitForConnections: true,
+    connectionLimit: 5,
+    queueLimit: 0
 });
 
 
@@ -212,26 +215,7 @@ app.get("/setup-database", (req, res) => {
 });
 module.exports = app;
 
-
 // ===============================
 // LOCAL DEVELOPMENT
 // ===============================
 
-if (require.main === module) {
-
-    db.connect((err) => {
-
-        if (err) {
-            console.log("Database connection failed:", err);
-            return;
-        }
-
-        console.log("Connected to MySQL!");
-
-        app.listen(3000, () => {
-            console.log("Server running on http://localhost:3000");
-        });
-
-    });
-
-}
