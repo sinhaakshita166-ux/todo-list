@@ -9,18 +9,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve HTML, CSS and JavaScript
-app.use(express.static(__dirname));
 
 // ==========================================
-// CONNECT TO MYSQL USING CONNECTION POOL
+// SERVE FRONTEND
+// ==========================================
+
+app.use(express.static(__dirname));
+
+
+// ==========================================
+// MYSQL CONNECTION POOL
 // ==========================================
 
 const db = mysql.createPool({
+
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+
+    port: Number(process.env.DB_PORT),
+
     user: process.env.DB_USER,
+
     password: process.env.DB_PASSWORD,
+
     database: process.env.DB_NAME,
 
     ssl: {
@@ -28,9 +38,33 @@ const db = mysql.createPool({
     },
 
     waitForConnections: true,
+
     connectionLimit: 5,
+
     queueLimit: 0
 });
+
+
+// ==========================================
+// TEST DATABASE CONNECTION
+// ==========================================
+
+db.getConnection((err, connection) => {
+
+    if (err) {
+
+        console.log("Database connection failed:", err);
+
+    } else {
+
+        console.log("Connected to MySQL!");
+
+        connection.release();
+
+    }
+
+});
+
 
 // ==========================================
 // GET ALL TASKS
@@ -38,21 +72,30 @@ const db = mysql.createPool({
 
 app.get("/tasks", (req, res) => {
 
-    const sql = "SELECT * FROM tasks";
+    console.log("GET /tasks");
+
+    const sql = "SELECT * FROM tasks ORDER BY id ASC";
 
     db.query(sql, (err, results) => {
 
         if (err) {
+
             console.log("GET ERROR:", err);
 
             return res.status(500).json({
-                error: "Database error"
+                error: "Database error",
+                details: err.message
             });
         }
 
+        console.log("Tasks:", results);
+
         res.json(results);
+
     });
+
 });
+
 
 // ==========================================
 // ADD TASK
@@ -60,33 +103,52 @@ app.get("/tasks", (req, res) => {
 
 app.post("/tasks", (req, res) => {
 
+    console.log("POST /tasks");
+
     const task = req.body.task;
 
-    if (!task) {
+    console.log("Task received:", task);
+
+    if (!task || task.trim() === "") {
+
         return res.status(400).json({
             error: "Task is required"
         });
+
     }
 
-    const sql = "INSERT INTO tasks (task) VALUES (?)";
+    const sql =
+        "INSERT INTO tasks (task, completed) VALUES (?, 0)";
 
     db.query(sql, [task], (err, result) => {
 
         if (err) {
+
             console.log("POST ERROR:", err);
 
             return res.status(500).json({
-                error: "Database error"
+                error: "Database error",
+                details: err.message
             });
+
         }
 
+        console.log("Task inserted:", result.insertId);
+
         res.json({
+
             id: result.insertId,
+
             task: task,
+
             completed: 0
+
         });
+
     });
+
 });
+
 
 // ==========================================
 // DELETE TASK
@@ -96,25 +158,34 @@ app.delete("/tasks/:id", (req, res) => {
 
     const id = req.params.id;
 
-    console.log("Deleting task:", id);
+    console.log("DELETE /tasks/:id", id);
 
-    const sql = "DELETE FROM tasks WHERE id = ?";
+    const sql =
+        "DELETE FROM tasks WHERE id = ?";
 
     db.query(sql, [id], (err, result) => {
 
         if (err) {
+
             console.log("DELETE ERROR:", err);
 
             return res.status(500).json({
-                error: "Database error"
+                error: "Database error",
+                details: err.message
             });
+
         }
+
+        console.log("Deleted:", result.affectedRows);
 
         res.json({
             message: "Task deleted successfully"
         });
+
     });
+
 });
+
 
 // ==========================================
 // UPDATE TASK
@@ -123,28 +194,45 @@ app.delete("/tasks/:id", (req, res) => {
 app.put("/tasks/:id", (req, res) => {
 
     const id = req.params.id;
+
     const completed = req.body.completed;
 
-    console.log("Updating task:", id);
-    console.log("Completed:", completed);
+    console.log(
+        "PUT /tasks/:id",
+        id,
+        completed
+    );
 
-    const sql = "UPDATE tasks SET completed = ? WHERE id = ?";
+    const sql =
+        "UPDATE tasks SET completed = ? WHERE id = ?";
 
-    db.query(sql, [completed, id], (err, result) => {
+    db.query(
+        sql,
+        [completed, id],
+        (err, result) => {
 
-        if (err) {
-            console.log("UPDATE ERROR:", err);
+            if (err) {
 
-            return res.status(500).json({
-                error: "Database error"
+                console.log("UPDATE ERROR:", err);
+
+                return res.status(500).json({
+                    error: "Database error",
+                    details: err.message
+                });
+
+            }
+
+            console.log("Updated:", result.affectedRows);
+
+            res.json({
+                message: "Task updated successfully"
             });
-        }
 
-        res.json({
-            message: "Task updated successfully"
-        });
-    });
+        }
+    );
+
 });
+
 
 // ==========================================
 // HOME PAGE
@@ -152,48 +240,19 @@ app.put("/tasks/:id", (req, res) => {
 
 app.get("/", (req, res) => {
 
-    res.sendFile(__dirname + "/index.html");
+    res.sendFile(
+        __dirname + "/index.html"
+    );
 
 });
 
-// ==========================================
-// TEMPORARY DATABASE SETUP
-// ==========================================
-
-app.get("/setup-database", (req, res) => {
-
-    const sql = `
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            task VARCHAR(255) NOT NULL,
-            completed TINYINT(1) DEFAULT 0
-        )
-    `;
-
-    db.query(sql, (err) => {
-
-        if (err) {
-
-            console.log("SETUP ERROR:", err);
-
-            return res.status(500).json({
-                error: err.message
-            });
-        }
-
-        res.json({
-            message: "Tasks table is ready!"
-        });
-
-    });
-
-});
 
 // ==========================================
 // VERCEL
 // ==========================================
 
 module.exports = app;
+
 
 // ==========================================
 // LOCAL DEVELOPMENT
