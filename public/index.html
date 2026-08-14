@@ -43,6 +43,37 @@
 
         </div>
 
+        <!-- Recurring task option -->
+        <div class="recurring-section">
+
+            <label class="recurring-label">
+
+                <input
+                    type="checkbox"
+                    id="recurringCheckbox"
+                >
+
+                <span>Repeat this task</span>
+
+            </label>
+
+            <select
+                id="recurrenceType"
+                disabled
+            >
+
+                <option value="daily">
+                    Every day
+                </option>
+
+                <option value="weekly">
+                    Every week
+                </option>
+
+            </select>
+
+        </div>
+
         <ul id="taskList"></ul>
 
         <p id="taskCount">

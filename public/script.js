@@ -3,11 +3,28 @@ const addButton = document.getElementById("addButton");
 const taskList = document.getElementById("taskList");
 const taskCount = document.getElementById("taskCount");
 
+const recurringCheckbox =
+    document.getElementById("recurringCheckbox");
+
+const recurrenceType =
+    document.getElementById("recurrenceType");
+
+// ==========================================
+// RECURRING TASK CONTROLS
+// ==========================================
+
+recurringCheckbox.addEventListener("change", function () {
+
+    recurrenceType.disabled = !recurringCheckbox.checked;
+
+});
+
 // ==========================================
 // UPDATE TASK COUNT
 // ==========================================
 
 function updateCount() {
+
     const totalTasks = taskList.children.length;
 
     taskCount.textContent =
@@ -44,8 +61,10 @@ function displayTask(task) {
     // Restore completed appearance
 
     if (task.completed) {
+
         text.style.textDecoration = "line-through";
         text.style.color = "#999";
+
     }
 
     // ======================================
@@ -57,32 +76,40 @@ function displayTask(task) {
         const completed = checkbox.checked ? 1 : 0;
 
         if (checkbox.checked) {
+
             text.style.textDecoration = "line-through";
             text.style.color = "#999";
+
         } else {
+
             text.style.textDecoration = "none";
             text.style.color = "#333";
+
         }
 
         try {
 
-            const response = await fetch(`/tasks/${task.id}`, {
+            const response = await fetch(
+                `/tasks/${task.id}`,
+                {
+                    method: "PUT",
 
-                method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    completed: completed
-                })
-            });
+                    body: JSON.stringify({
+                        completed: completed
+                    })
+                }
+            );
 
             if (!response.ok) {
+
                 throw new Error(
                     `Server returned ${response.status}`
                 );
+
             }
 
             console.log("Task updated!");
@@ -92,45 +119,57 @@ function displayTask(task) {
             console.error("Update error:", error);
 
             alert("Could not update task.");
+
         }
+
     });
 
     // ======================================
     // DELETE BUTTON
     // ======================================
 
-    deleteButton.addEventListener("click", async function () {
+    deleteButton.addEventListener(
+        "click",
+        async function () {
 
-        console.log("Deleting task:", task.id);
+            console.log("Deleting task:", task.id);
 
-        try {
+            try {
 
-            const response = await fetch(
-                `/tasks/${task.id}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `Server returned ${response.status}`
+                const response = await fetch(
+                    `/tasks/${task.id}`,
+                    {
+                        method: "DELETE"
+                    }
                 );
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        `Server returned ${response.status}`
+                    );
+
+                }
+
+                li.remove();
+
+                updateCount();
+
+                console.log("Task deleted!");
+
+            } catch (error) {
+
+                console.error(
+                    "Delete error:",
+                    error
+                );
+
+                alert("Could not delete task.");
+
             }
 
-            li.remove();
-
-            updateCount();
-
-            console.log("Task deleted!");
-
-        } catch (error) {
-
-            console.error("Delete error:", error);
-
-            alert("Could not delete task.");
         }
-    });
+    );
 
     taskList.appendChild(li);
 
@@ -149,12 +188,17 @@ async function loadTasks() {
 
         const response = await fetch("/tasks");
 
-        console.log("GET /tasks status:", response.status);
+        console.log(
+            "GET /tasks status:",
+            response.status
+        );
 
         if (!response.ok) {
+
             throw new Error(
                 `Server returned ${response.status}`
             );
+
         }
 
         const tasks = await response.json();
@@ -164,16 +208,24 @@ async function loadTasks() {
         taskList.innerHTML = "";
 
         tasks.forEach(task => {
+
             displayTask(task);
+
         });
 
         updateCount();
 
     } catch (error) {
 
-        console.error("Error loading tasks:", error);
+        console.error(
+            "Error loading tasks:",
+            error
+        );
 
-        alert("Could not load tasks from the database.");
+        alert(
+            "Could not load tasks from the database."
+        );
+
     }
 }
 
@@ -189,7 +241,26 @@ async function addTask() {
         return;
     }
 
+    // --------------------------------------
+    // Get recurring information
+    // --------------------------------------
+
+    const isRecurring =
+        recurringCheckbox.checked ? 1 : 0;
+
+    const recurrence =
+        recurringCheckbox.checked
+            ? recurrenceType.value
+            : null;
+
     console.log("Adding task:", taskText);
+
+    console.log(
+        "Recurring:",
+        isRecurring,
+        "Type:",
+        recurrence
+    );
 
     try {
 
@@ -202,38 +273,70 @@ async function addTask() {
             },
 
             body: JSON.stringify({
-                task: taskText
+
+                task: taskText,
+
+                recurring: isRecurring,
+
+                recurrence_type: recurrence
+
             })
         });
 
-        console.log("POST /tasks status:", response.status);
+        console.log(
+            "POST /tasks status:",
+            response.status
+        );
 
         if (!response.ok) {
 
-            const errorText = await response.text();
+            const errorText =
+                await response.text();
 
-            console.error("Server error:", errorText);
+            console.error(
+                "Server error:",
+                errorText
+            );
 
             throw new Error(
                 `Server returned ${response.status}`
             );
+
         }
 
-        const newTask = await response.json();
+        const newTask =
+            await response.json();
 
-        console.log("New task:", newTask);
+        console.log(
+            "New task:",
+            newTask
+        );
 
         displayTask(newTask);
 
+        // Clear input
+
         taskInput.value = "";
+
+        // Reset recurring controls
+
+        recurringCheckbox.checked = false;
+
+        recurrenceType.disabled = true;
+
+        recurrenceType.value = "daily";
 
         taskInput.focus();
 
     } catch (error) {
 
-        console.error("Error adding task:", error);
+        console.error(
+            "Error adding task:",
+            error
+        );
 
         alert("Could not add task.");
+
     }
 }
 
@@ -241,19 +344,27 @@ async function addTask() {
 // ADD BUTTON
 // ==========================================
 
-addButton.addEventListener("click", addTask);
+addButton.addEventListener(
+    "click",
+    addTask
+);
 
 // ==========================================
 // ENTER KEY
 // ==========================================
 
-taskInput.addEventListener("keydown", function (event) {
+taskInput.addEventListener(
+    "keydown",
+    function (event) {
 
-    if (event.key === "Enter") {
-        addTask();
+        if (event.key === "Enter") {
+
+            addTask();
+
+        }
+
     }
-
-});
+);
 
 // ==========================================
 // START APP
