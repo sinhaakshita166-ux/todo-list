@@ -17,100 +17,54 @@ module.exports = async function handler(req, res) {
     let connection;
 
     try {
-
-        // Connect to Aiven MySQL
         connection = await mysql.createConnection(dbConfig);
 
-        const id = req.query.id;
+        // TEMPORARY DATABASE SETUP
+        // We will remove this after running it once.
 
-        // ==========================================
-        // GET ALL TASKS
-        // ==========================================
+        if (req.method === "GET" && req.query.setup === "true") {
 
-        if (req.method === "GET") {
+            // Add recurring-task information to the existing tasks table.
+            await connection.query(`
+                ALTER TABLE tasks
+                ADD COLUMN recurring TINYINT(1) NOT NULL DEFAULT 0,
+                ADD COLUMN recurrence_type VARCHAR(20) DEFAULT NULL
+            `);
 
-            const [rows] = await connection.query(
-                "SELECT * FROM tasks ORDER BY id ASC"
-            );
+            // Create the table that stores each day's task occurrence.
+            await connection.query(`
+                CREATE TABLE task_occurrences (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    task_id INT NOT NULL,
+                    task_date DATE NOT NULL,
+                    status ENUM('pending', 'completed', 'failed')
+                        DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME NOT NULL,
+                    completed_at DATETIME NULL,
 
-            return res.status(200).json(rows);
-        }
-
-        // ==========================================
-        // ADD TASK
-        // ==========================================
-
-        if (req.method === "POST") {
-
-            const { task } = req.body;
-
-            if (!task || task.trim() === "") {
-
-                return res.status(400).json({
-                    error: "Task text required"
-                });
-            }
-
-            const [result] = await connection.query(
-                "INSERT INTO tasks (task, completed) VALUES (?, 0)",
-                [task]
-            );
-
-            return res.status(201).json({
-                id: result.insertId,
-                task: task,
-                completed: 0
-            });
-        }
-
-        // ==========================================
-        // UPDATE TASK
-        // ==========================================
-
-        if (req.method === "PUT") {
-
-            const { completed } = req.body;
-
-            await connection.query(
-                "UPDATE tasks SET completed = ? WHERE id = ?",
-                [completed, id]
-            );
+                    FOREIGN KEY (task_id)
+                        REFERENCES tasks(id)
+                        ON DELETE CASCADE
+                )
+            `);
 
             return res.status(200).json({
-                message: "Task updated successfully"
+                success: true,
+                message: "Database upgraded successfully!"
             });
         }
 
-        // ==========================================
-        // DELETE TASK
-        // ==========================================
-
-        if (req.method === "DELETE") {
-
-            await connection.query(
-                "DELETE FROM tasks WHERE id = ?",
-                [id]
-            );
-
-            return res.status(200).json({
-                message: "Task deleted successfully"
-            });
-        }
-
-        // ==========================================
-        // UNSUPPORTED METHOD
-        // ==========================================
-
-        return res.status(405).json({
-            error: "Method not allowed"
+        return res.status(403).json({
+            error: "Setup endpoint only"
         });
 
     } catch (error) {
 
-        console.error("Database Error:", error);
+        console.error("Database Setup Error:", error);
 
         return res.status(500).json({
-            error: "Internal Server Error",
+            error: "Database setup failed",
             details: error.message
         });
 
@@ -119,6 +73,5 @@ module.exports = async function handler(req, res) {
         if (connection) {
             await connection.end();
         }
-
     }
 };
